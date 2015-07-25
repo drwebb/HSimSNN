@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+{-# OPTIONS_GHC -fdefer-type-errors #-}
 -- | Network module includes functions and data types that are involved in simulating the network
 module Simulation.HSimSNN.Network where
 
@@ -7,7 +9,7 @@ import Simulation.HSimSNN.Spikes
 import Simulation.HSimSNN.Neuron
 
 import Data.Maybe
-import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector as V
 import Control.Monad.State
 
 -- | Network data type encapsulates a network of neurons by holding a Population and its Connections
@@ -16,9 +18,9 @@ data Network = Network {population:: Population, connections:: Connections}
 
 
 -- | value of network state
-type NetworkValue = SpikeTrain
+type NetworkValue = SpikeTrain (Int,Double)
 -- | network state
-type NetworkState = (Network, SpikeTrain)
+type NetworkState = (Network, SpikeTrain (Int,Double))
 
 -- | Pass a set of spikes through a network and get the network state and spikes
 --
@@ -42,7 +44,7 @@ type NetworkState = (Network, SpikeTrain)
 --      - Or when time is larger than some limit
 --
 -- - Return the final 'SpikeTrain' and 'Network'
-passThroughNetwork :: SpikeTrain -> Double -> State NetworkState NetworkValue
+passThroughNetwork :: NetworkValue -> Double -> State NetworkState NetworkValue
 passThroughNetwork EmptySpikeTrain tsim = do
     (network, spkout) <- get
     let i = firstSpikingNeuron (population network)
@@ -61,10 +63,10 @@ passThroughNetwork EmptySpikeTrain tsim = do
                   concST spkout newspk )
             passThroughNetwork newspk tsim
             
+
 -- applies a SpikeTrain to the network
-passThroughNetwork (SpikeTrain spktrn) tsim = do
-    let (indx,t) = V.head spktrn
-    let restspk = V.tail spktrn
+passThroughNetwork (foo . unSpikeTrain -> Nothing) _ = undefined
+passThroughNetwork (foo . unSpikeTrain -> Just ((indx,t), restspk)) tsim = do
     if (t<=tsim) then do
         (net, _) <- get
         --update network to before the spike arrives
@@ -80,7 +82,10 @@ passThroughNetwork (SpikeTrain spktrn) tsim = do
         passThroughNetwork EmptySpikeTrain tsim
 
 
-
+foo :: V.Vector a -> Maybe (a,V.Vector a)
+foo vec = if V.length vec == 0
+             then Nothing
+             else Just (V.head vec, V.tail vec)
 
 -- | State based resetNeuronNinNet
 resetNeuronNinNet :: Int -> Double -> State NetworkState NetworkValue

@@ -71,6 +71,7 @@ library
   -- that it will remain compatible. If it doesn't please let me know!
   build-depends:       base, 
                        vector,
+                       mono-traversable,
                        mtl
   
   -- Directories containing source files.
